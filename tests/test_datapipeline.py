@@ -16,7 +16,7 @@ import random
 import numpy as np
 
 import pytest
-
+from util_funcs import create_multiple_images
 
 @pytest.mark.skip(reason="DataPipeline has not been written to handle this circumstance yet.")
 def test_sample_with_no_masks():
@@ -35,20 +35,10 @@ def test_sample_with_no_masks():
     height = 80
 
     tmpdir = tempfile.mkdtemp()
-    tmps = []
 
     num_of_images = 10
-
-    for i in range(num_of_images):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width, height))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+    tmpdir = tempfile.mkdtemp()
+    tmps = create_multiple_images(tmpdir, num_of_images, (width, height))
 
     # Make our data structures
     # Labels
@@ -66,10 +56,6 @@ def test_sample_with_no_masks():
 
     assert len(augmented_images) == sample_size
 
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
-
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
     shutil.rmtree(tmpdir)
@@ -80,36 +66,13 @@ def test_sample_with_masks():
     height = 80
 
     # Original images
-    tmpdir = tempfile.mkdtemp()
-    tmps = []
-
     num_of_images = 10
-
-    for i in range(num_of_images):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, prefix=str(i), suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width, height))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+    tmpdir = tempfile.mkdtemp()
+    create_multiple_images(tmpdir, num_of_images, (width, height))
 
     # Mask images
     mask_tmpdir = tempfile.mkdtemp()
-    mask_tmps = []
-
-    for i in range(num_of_images):
-        mask_tmps.append(tempfile.NamedTemporaryFile(dir=mask_tmpdir, prefix=str(i), suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width, height))
-        im.save(bytestream, 'JPEG')
-
-        mask_tmps[i].file.write(bytestream.getvalue())
-        mask_tmps[i].flush()
+    create_multiple_images(mask_tmpdir, num_of_images, (width, height))
 
     original_image_list = glob.glob(os.path.join(tmpdir, "*.JPEG"))
     mask_image_list = glob.glob(os.path.join(mask_tmpdir, "*.JPEG"))
@@ -159,13 +122,6 @@ def test_sample_with_masks():
         for im in im_list_no_labels:
             pil_image_from_array_no_lbl = Image.fromarray(im)
             assert pil_image_from_array_no_lbl is not None
-
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
-
-    for i in range(len(tmps)):
-        mask_tmps[i].close()
 
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically

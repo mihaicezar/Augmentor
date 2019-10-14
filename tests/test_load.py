@@ -18,7 +18,7 @@ from PIL import Image
 
 from Augmentor import ImageUtilities
 
-from util_funcs import create_sub_folders
+from util_funcs import create_sub_folders, create_temp_file, create_temp_image_file
 
 
 def test_initialise_with_no_parameters():
@@ -32,6 +32,7 @@ def test_initialise_with_nondefault_output_directory():
     output_directory = 'out'
     p = Augmentor.Pipeline(empty_temp_directory, output_directory=output_directory)
     assert os.path.exists(os.path.join(empty_temp_directory, output_directory))
+    shutil.rmtree(empty_temp_directory)
 
 
 def test_initialise_with_missing_folder():
@@ -45,6 +46,7 @@ def test_initialise_with_empty_folder():
 
     assert os.path.exists(os.path.join(empty_temp_directory, 'output'))
     assert len(p.augmentor_images) == 0
+    shutil.rmtree(empty_temp_directory)
 
 
 def test_initialise_with_subfolders():
@@ -60,7 +62,7 @@ def test_initialise_with_subfolders():
 
     # Add some images in the root directory, and some folders in the sub directories,
     # they should not be found when doing the scan
-    tmp_not_to_be_found = tempfile.NamedTemporaryFile(dir=parent_temp_directory, suffix='.JPEG')
+    tmp_not_to_be_found = create_temp_file(parent_temp_directory, '.JPEG')
     im_not_to_be_found = Image.fromarray(np.uint8(np.random.rand(800, 800) * 255))
     im_not_to_be_found.save(tmp_not_to_be_found.name, "JPEG")
 
@@ -90,12 +92,8 @@ def test_initialise_with_subfolders():
         assert key in scanned_directories
         assert os.path.exists(os.path.join(parent_temp_directory, key))
 
-    # Tidy up and delete temporary files.
-    tmp_not_to_be_found.close()
+    # Tidy up and delete temporary dirs.
     shutil.rmtree(sub_temp_directory_not_to_be_found)
-
-    for temp_file in temp_files:
-        temp_file.close()
 
     for temp_directory in temp_directories:
         shutil.rmtree(temp_directory)
@@ -109,15 +107,7 @@ def test_initialise_with_ten_images():
     tmps = []
 
     for i in range(10):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (800, 800))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+        tmps.append(create_temp_image_file(tmpdir, 'JPEG'))
 
     p = Augmentor.Pipeline(tmpdir)
     assert len(p.augmentor_images) == len(tmps)
@@ -140,10 +130,6 @@ def test_initialise_with_ten_images():
     for i in range(len(tmps)):
         assert os.path.exists(p.augmentor_images[i].image_path)
 
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
-
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
     shutil.rmtree(tmpdir)
@@ -156,15 +142,7 @@ def test_dataframe_initialise_with_ten_images():
     tmps = []
 
     for i in range(10):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (800, 800))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+        tmps.append(create_temp_image_file(tmpdir, 'JPEG'))
 
     temp_df = pandas.DataFrame(dict(path = [i.name for i in tmps],
                            cat_id = [len(i.name) for i in tmps]))
@@ -191,10 +169,6 @@ def test_dataframe_initialise_with_ten_images():
     # actually exist and are valid paths
     for i in range(len(tmps)):
         assert os.path.exists(p.augmentor_images[i].image_path)
-
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
 
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
@@ -225,9 +199,9 @@ def test_class_image_scan():
 
     # Make num_of_im_files images in each sub directory.
     for sub_dir in sub_dirs:
-        for iterator in range(num_of_im_files):
+        for _ in range(num_of_im_files):
             suffix_filetype = random.choice(suffix_filetypes)
-            tmp_files.append(tempfile.NamedTemporaryFile(dir=os.path.abspath(sub_dir), suffix=suffix_filetype[0]))
+            tmp_files.append(create_temp_file(os.path.abspath(sub_dir), suffix_filetype[0]))
             im = Image.fromarray(np.uint8(np.random.rand(80, 80, 3) * 255))
             im.save(tmp_files[image_counter].name, suffix_filetype[1])
             image_counter += 1
@@ -273,8 +247,8 @@ def test_class_image_scan():
     run()
 
     # Add some extra images in places where they should not be and re-run the tests.
-    temp_file_in_root_dir1 = tempfile.NamedTemporaryFile(dir=initial_temp_directory, suffix=".PNG")
-    temp_file_in_root_dir2 = tempfile.NamedTemporaryFile(dir=initial_temp_directory, suffix=".PNG")
+    create_temp_file(initial_temp_directory, ".PNG")
+    create_temp_file(initial_temp_directory, ".PNG")
 
     # All tests should run exactly as before, those two files above should be ignored.
     run()
@@ -285,20 +259,13 @@ def test_class_image_scan():
     r2 = random.randint(0, len(sub_dirs)-1)
     os.mkdir(os.path.join(initial_temp_directory, sub_dirs[r1], output_directory))
     os.mkdir(os.path.join(initial_temp_directory, sub_dirs[r2], "ignore_me"))
-    temp_to_ignore = tempfile.NamedTemporaryFile(dir=os.path.join(initial_temp_directory,
-                     sub_dirs[r1], output_directory), suffix=".JPEG")
+    temp_to_ignore = create_temp_file(os.path.join(initial_temp_directory,
+                     sub_dirs[r1], output_directory), ".JPEG")
     im = Image.fromarray(np.uint8(np.random.rand(80, 80, 3) * 255))
     im.save(temp_to_ignore.name, "JPEG")
     run()
 
     # Clean up
-    for tmp_file in tmp_files:
-        tmp_file.close()
-
-    temp_file_in_root_dir1.close()
-    temp_file_in_root_dir2.close()
-    temp_to_ignore.close()
-
     shutil.rmtree(os.path.join(initial_temp_directory, sub_dirs[r1], output_directory))
     shutil.rmtree(os.path.join(initial_temp_directory, sub_dirs[r2], "ignore_me"))
 

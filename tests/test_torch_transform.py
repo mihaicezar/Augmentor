@@ -1,3 +1,7 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath('.'))
+
 import pytest
 
 # Context
@@ -32,3 +36,4 @@ def test_torch_transform():
     for op in p.operations:
         result = op.perform_operation([result])[0]
     assert transforms(red) == result
+test_torch_transform()

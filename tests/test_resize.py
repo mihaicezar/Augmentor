@@ -12,6 +12,8 @@ from PIL import Image
 from Augmentor import Operations
 import glob
 
+from util_funcs import create_temp_file
+
 original_dimensions = (800, 800)
 larger_dimensions = (1200, 1200)
 smaller_dimensions = (400, 400)
@@ -20,7 +22,7 @@ smaller_dimensions = (400, 400)
 def test_resize_in_memory():
 
     tmpdir = tempfile.mkdtemp()
-    tmp = tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG')
+    tmp = create_temp_file(tmpdir, '.JPEG')
     im = Image.new('RGB', original_dimensions)
     im.save(tmp.name, 'JPEG')
 
@@ -36,7 +38,7 @@ def test_resize_in_memory():
 
     assert im_resized_smaller[0].size == smaller_dimensions
 
-    tmp.close()
+    shutil.rmtree(tmpdir)
 
 
 def test_resize_save_to_disk():
@@ -45,7 +47,7 @@ def test_resize_save_to_disk():
     n = 10
     tmpfiles = []
     for i in range(n):
-        tmpfiles.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
+        tmpfiles.append(create_temp_file(tmpdir, '.JPEG'))
         im = Image.new('RGB', original_dimensions)
         im.save(tmpfiles[i].name, 'JPEG')
 
@@ -63,9 +65,7 @@ def test_resize_save_to_disk():
     for im_path in generated_images:
         im_g = Image.open(im_path)
         assert im_g.size == larger_dimensions
+        im_g.close()
 
     # Clean up
-    for t in tmpfiles:
-        t.close()
-
     shutil.rmtree(tmpdir)

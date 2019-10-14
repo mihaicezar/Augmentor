@@ -17,6 +17,7 @@ import numpy as np
 from PIL import Image
 
 from Augmentor import ImageUtilities
+from util_funcs import create_multiple_images
 
 
 def test_image_generator_function():
@@ -25,18 +26,7 @@ def test_image_generator_function():
     height = 80
 
     tmpdir = tempfile.mkdtemp()
-    tmps = []
-
-    for i in range(10):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width, height))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+    tmps = create_multiple_images(tmpdir, 10, (width, height))
 
     p = Augmentor.Pipeline(tmpdir)
     assert len(p.augmentor_images) == len(tmps)
@@ -51,10 +41,6 @@ def test_image_generator_function():
 
     assert X is not None
 
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
-
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
     shutil.rmtree(tmpdir)
@@ -67,18 +53,7 @@ def test_keras_generator_from_disk():
     height = 80
 
     tmpdir = tempfile.mkdtemp()
-    tmps = []
-
-    for i in range(10):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width, height))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+    tmps = create_multiple_images(tmpdir, 10, (width, height))
 
     p = Augmentor.Pipeline(tmpdir)
     assert len(p.augmentor_images) == len(tmps)
@@ -113,10 +88,6 @@ def test_keras_generator_from_disk():
     assert len(X2) == len(y2)
 
     assert np.shape(X2) == (batch_size, 3, width, height)
-
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
 
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
@@ -175,22 +146,12 @@ def test_generator_with_array_data():
 def test_generator():
 
     tmpdir = tempfile.mkdtemp()
-    tmps = []
 
     num_of_images = 10
     width = 800
     height = 800
 
-    for i in range(num_of_images):
-        tmps.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
-
-        bytestream = io.BytesIO()
-
-        im = Image.new('RGB', (width,height))
-        im.save(bytestream, 'JPEG')
-
-        tmps[i].file.write(bytestream.getvalue())
-        tmps[i].flush()
+    create_multiple_images(tmpdir, num_of_images, (width, height))
 
     p = Augmentor.Pipeline(tmpdir)
 
@@ -223,10 +184,6 @@ def test_generator():
     # All labels in y should = 0 because we only have one class.
     for label in y:
         assert label == 0
-
-    # Close all temporary files which will also delete them automatically
-    for i in range(len(tmps)):
-        tmps[i].close()
 
     # Finally remove the directory (and everything in it) as mkdtemp does
     # not delete itself after closing automatically
@@ -265,9 +222,10 @@ def test_generator_image_scan():
 
     # Make num_of_im_files images in each sub directory.
     for sub_dir in sub_dirs:
-        for iterator in range(num_of_im_files):
+        for _ in range(num_of_im_files):
             suffix_filetype = random.choice(suffix_filetypes)
-            tmp_files.append(tempfile.NamedTemporaryFile(dir=os.path.abspath(sub_dir), suffix=suffix_filetype[0]))
+            tmp_files.append(tempfile.NamedTemporaryFile(dir=os.path.abspath(sub_dir), suffix=suffix_filetype[0], delete=False))
+            tmp_files[image_counter].close()
             im = Image.fromarray(np.uint8(np.random.rand(80, 80, 3) * 255))
             im.save(tmp_files[image_counter].name, suffix_filetype[1])
             image_counter += 1
@@ -295,11 +253,8 @@ def test_generator_image_scan():
     assert len(y_2) == batch_size
 
     # Clean up
-    for tmp_file in tmp_files:
-        tmp_file.close()
-
     for sub_dir in sub_dirs:
         shutil.rmtree(sub_dir)
 
-    shutil.rmtree(os.path.join(initial_temp_directory, output_directory))
+    shutil.rmtree(os.path.dirname(output_directory))
     shutil.rmtree(initial_temp_directory)

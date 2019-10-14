@@ -4,6 +4,7 @@ import pytest
 import os
 import sys
 import tempfile
+import shutil
 sys.path.insert(0, os.path.abspath('.'))
 
 import Augmentor
@@ -22,3 +23,5 @@ def test_add_gaussian_to_pipeline():
     p.gaussian_distortion(1, 8, 8, 8, "true", "true")
 
     assert p is not None
+
+    shutil.rmtree(tmp_dir)

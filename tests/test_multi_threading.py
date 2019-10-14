@@ -12,6 +12,8 @@ from PIL import Image
 from Augmentor import Operations
 import glob
 
+from util_funcs import create_temp_file
+
 original_dimensions = (640, 480)
 larger_dimensions = (1200, 1000)
 smaller_dimensions = (360, 240)
@@ -23,7 +25,7 @@ def test_simple_multi_threading_example():
     n = 100
     tmpfiles = []
     for i in range(n):
-        tmpfiles.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
+        tmpfiles.append(create_temp_file(tmpdir, '.JPEG'))
         im = Image.new('RGB', original_dimensions)
         im.save(tmpfiles[i].name, 'JPEG')
 
@@ -41,11 +43,9 @@ def test_simple_multi_threading_example():
     for im_path in generated_images:
         im_g = Image.open(im_path)
         assert im_g.size == larger_dimensions
+        im_g.close()
 
     # Clean up
-    for t in tmpfiles:
-        t.close()
-
     shutil.rmtree(tmpdir)
 
 
@@ -55,7 +55,7 @@ def test_all_operations_multi_thread():
     n = 100
     tmpfiles = []
     for i in range(n):
-        tmpfiles.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
+        tmpfiles.append(create_temp_file(tmpdir, '.JPEG'))
         im = Image.new('RGB', (480, 800))
         im.save(tmpfiles[i].name, 'JPEG')
 
@@ -76,9 +76,6 @@ def test_all_operations_multi_thread():
     assert number_of_gen_images == n
 
     # Clean up
-    for t in tmpfiles:
-        t.close()
-
     shutil.rmtree(tmpdir)
 
 def test_multi_threading_override():
@@ -88,7 +85,7 @@ def test_multi_threading_override():
     n = 100
     tmpfiles = []
     for i in range(n):
-        tmpfiles.append(tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG'))
+        tmpfiles.append(create_temp_file(tmpdir, '.JPEG'))
         im = Image.new('RGB', original_dimensions)
         im.save(tmpfiles[i].name, 'JPEG')
 
@@ -106,9 +103,7 @@ def test_multi_threading_override():
     for im_path in generated_images:
         im_g = Image.open(im_path)
         assert im_g.size == larger_dimensions
+        im_g.close()
 
     # Clean up
-    for t in tmpfiles:
-        t.close()
-
     shutil.rmtree(tmpdir)

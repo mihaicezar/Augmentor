@@ -7,6 +7,8 @@ import shutil
 from PIL import Image
 from Augmentor import Operations
 
+from util_funcs import create_temp_file
+
 
 def rotate_images(tmpdir, rot):
     original_dimensions = (800, 800)
@@ -40,7 +42,7 @@ def test_rotate_images_custom_temp_files():
     original_dimensions = (800, 800)
 
     tmpdir = tempfile.mkdtemp()
-    tmp = tempfile.NamedTemporaryFile(dir=tmpdir, suffix='.JPEG')
+    tmp = create_temp_file(tmpdir, '.JPEG')
     im = Image.new('RGB', original_dimensions)
     im.save(tmp.name, 'JPEG')
 
@@ -51,5 +53,4 @@ def test_rotate_images_custom_temp_files():
     assert im_r is not None
     assert im_r[0].size == original_dimensions
 
-    tmp.close()
     shutil.rmtree(tmpdir)
